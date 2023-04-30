@@ -1,0 +1,122 @@
+project setup
+
+started with installing dependecies needed for the project( express, nodmorn, cors,bodyparsar)
+populating the index.js file (entry point into my app) and cofiguring the setup 
+
+choice of database (postgress) because i have experience with it and i used it for the last project
+The db.js file typically contains code that establishes a connection to the PostgreSQL database and exports the database connection object for use in other parts of the application.
+
+I am using db-migrate for my migrations
+
+For example, in a todo app, the services layer might include functions for creating, updating, and deleting todos, as well as functions for fetching and filtering todos from a database. 
+These services could then be called by the controllers/routes to handle user requests and responses.
+
+
+UTILS FOLDER
+validation.js: A collection of functions for validating input data. For example,
+ this might include a function to check if an email address is valid or if a password meets certain requirements.
+
+ now work on operations reg table
+
+
+
+ OVERVIEW OF THE FIRST STORY
+ As a user, I should be able to sign up (with email & password) as an operator
+
+ This refers to a feature or functionality that allows a user to create an account on a website or application, specifically as an operator. The user would be prompted to enter their email address and choose a password.
+
+The API (Application Programming Interface) refers to a set of protocols or tools used to build software applications. In this context, the API provides a way for the user to interact with the website or application to create their account.
+
+Once the user has entered their information and submitted the form, the API would process the data and create an account for them with the appropriate permissions and access levels assigned for the role of an operator.
+
+
+FOR MY OPERATOR PROFILE
+its going to use a post api, before you can fill the profile it is going to ask you for auth token
+
+
+
+WHEN I CREATE USER 8 AND I LOG IN USING THE LOGIN ROUTE, IT GIVES ME A TOKEN 1
+WHEN I COME BACK TO THE UER SIGN UP ROUTE AND CREATE USER 9, AND I WANT TO SIGN UP USER 9 AS AN OPERATOR , 
+I CAN USE THE TOKEN GOTTEN FROM USER 8 (1) TO ACCESS THE OPERATOR SIGNUP ROUTE
+
+
+const operatorValidation = (req) => {
+  return new Promise(async (resolve, reject) => {
+    try {
+      const {
+        firstname,
+        lastname,
+        phonenumber,
+        nationality,
+        state,
+        lga,
+        sex,
+        dateofbirth,
+        nin,
+      } = req.body;
+
+      // List of required keys
+      const Keys = [
+        "firstname",
+        "lastname",
+        "phonenumber",
+        "nationality",
+        "state",
+        "lga",
+        "sex",
+        "dateofbirth",
+        "nin",
+        "picture",
+      ];
+
+      // List of allowed image types
+      const ImageTypes = ["image/png", "image/jpeg", "image/jpg", "image/gif"];
+
+      // Validate that all required keys are present in the request body
+      await requiredKeysValidator(req, Keys);
+
+      // Regular expressions to validate phone number and NIN
+      const phonePattern = /^((\+234)|234|0)[78901]\d{9}$/;
+      const ninPattern = /^\d{11}$/;
+
+      // Check that all required fields are not empty
+      if (
+        !(
+          firstname.trim() &&
+          lastname.trim() &&
+          phonenumber.trim() &&
+          nationality.trim() &&
+          state.trim() &&
+          lga.trim() &&
+          sex.trim() &&
+          dateofbirth.trim() &&
+          nin.trim()
+        )
+      ) {
+        reject(
+          "firstname, lastname, phonenumber, nationality, state, lga, sex, dateofbirth, nin and picture must be provided"
+        );
+      } else if (!ImageTypes.includes(req.file.mimetype)) {
+        // Check that the uploaded file is a valid image type
+        reject("Upload an image as picture");
+      } else if (!phonePattern.test(phonenumber)) {
+        // Check that phone number is valid
+        reject("Phone number not valid");
+      } else if (!["male", "female"].includes(sex.toLowerCase())) {
+        // Check that sex is either "Male" or "Female"
+        reject(new Error("Sex must either be Male or Female"));
+      } else if (!moment(dateofbirth, "YYYY-MM-DD", true).isValid()) {
+        // Check that date of birth is in the format "YYYY-MM-DD"
+        reject("Enter Date of Birth format in YYYY-MM-DD");
+      } else if (!ninPattern.test(nin)) {
+        // Check that NIN is valid
+        reject("Invalid NIN");
+      } else {
+        // All validation checks passed
+        resolve(true);
+      }
+    } catch (error) {
+      reject(error);
+    }
+  });
+};
