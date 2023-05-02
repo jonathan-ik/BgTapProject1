@@ -7,7 +7,8 @@ const operators = require("./Routes/operators");
 const authToken = require("./middlewares/authentication");
 const lgaTable = require("./utils/lgatable");
 const StatesTable = require("./utils/statestable");
-
+const loadProductsTable = require("./utils/loadProductsTable");
+const loadSeedTable = require("./utils/SeedTable");
 //configure dotenv
 dotenv.config();
 const port = process.env.PORT || process.env.port;
@@ -25,6 +26,10 @@ app.options("*", cors());
 
 app.use(StatesTable);
 app.use(lgaTable);
+
+// for loading products and seeds table immediately the server comes up
+app.use(loadProductsTable);
+app.use(loadSeedTable);
 
 // get request
 app.get("/", (req, res) => {

@@ -2,6 +2,7 @@ const pool = require("../db");
 const bcrypt = require("bcrypt");
 const dotenv = require("dotenv");
 const fs = require("fs");
+
 const uservalidation = require("../utils/uservalidation");
 const {
   userNationality,
@@ -9,6 +10,8 @@ const {
   userLga,
   operatorValidation,
   registion_id,
+  validateOperatorsSelection,
+  getOperator_id,
 } = require("../utils/operatorUtils");
 
 dotenv.config();
@@ -136,7 +139,7 @@ const operatorCompleteRegistration = (req) => {
         //   // Check that a picture file is uploaded
         reject("Upload a Picture");
       }
-      console.log(req.file);
+      // console.log(req.file);
       const picture = fs.readFileSync(req.file.path);
       // Check if operator is signed up
       const conn = await pool.connect();
@@ -168,6 +171,7 @@ const operatorCompleteRegistration = (req) => {
         reject("You have already completed this registration");
         return;
       }
+
       //validate operator data fields
       await operatorValidation(req);
       //validate nationality
@@ -180,35 +184,66 @@ const operatorCompleteRegistration = (req) => {
       await userLga(req);
 
       const foundNINQuery = "SELECT * FROM operator_profile WHERE nin = $1";
-      const foundNINResult = await pool.query(foundNINQuery, [nin]);
+      const foundNINResult = await conn.query(foundNINQuery, [nin]);
       const foundNIN = foundNINResult.rows[0];
       if (foundNIN) {
         reject("NIN already in use, Please provide another NIN");
+      } else {
+        // Insert operator profile
+        const insertSql = `INSERT INTO operator_profile (reg_id, firstname, lastname, phonenumber, nationality, state, lga, sex, dateofbirth, nin, picture ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING *;`;
+        const insertValues = [
+          reg_id,
+          firstname,
+          lastname,
+          phonenumber,
+          nationality,
+          state,
+          lga,
+          sex.toLowerCase(),
+          dateofbirth,
+          nin,
+          picture,
+        ];
+        const newPicturePath = `uploads/${reg_id}.png`;
+
+        fs.unlinkSync(req.file.path);
+        fs.writeFileSync(newPicturePath, picture);
+
+        await conn.query(insertSql, insertValues);
       }
+      conn.release();
 
-      // Insert operator profile
-      const insertSql = `INSERT INTO operator_profile (reg_id, firstname, lastname, phonenumber, nationality, state, lga, sex, dateofbirth, nin, picture ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING *;`;
-      const insertValues = [
-        reg_id,
-        firstname,
-        lastname,
-        phonenumber,
-        nationality,
-        state,
-        lga,
-        sex.toLowerCase(),
-        dateofbirth,
-        nin,
-        picture,
-      ];
-      const newPicturePath = `uploads/${req.file.originalname}`;
+      resolve("registration completed");
+    } catch (error) {
+      reject(error);
+    }
+  });
+};
 
-      fs.unlinkSync(req.file.path);
-      fs.writeFileSync(newPicturePath, picture);
+const createOperatorSelections = (req) => {
+  return new Promise(async (resolve, reject) => {
+    try {
+      const { product_id, seed_id } = req.body;
+      const operator_id = await getOperator_id(req);
+      // console.log(operator_id);
+      const conn = await pool.connect();
 
-      await conn.query(insertSql, insertValues);
+      await validateOperatorsSelection(req);
 
-      resolve(true);
+      ////////
+      const sql = `INSERT INTO operator_selections(
+                operator_id, product_id, seed_id)
+                VALUES ($1, $2, $3)
+                    RETURNING *;`;
+
+      const values = [operator_id, product_id, seed_id];
+
+      const result = await conn.query(sql, values);
+      const operatorSelection = result.rows[0];
+
+      conn.release();
+
+      resolve(operatorSelection);
     } catch (error) {
       reject(error);
     }
@@ -219,4 +254,5 @@ module.exports = {
   createoperator,
   operatorLogin,
   operatorCompleteRegistration,
+  createOperatorSelections,
 };

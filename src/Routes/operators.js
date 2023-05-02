@@ -1,6 +1,7 @@
 const express = require("express");
 const operators = express.Router();
 const multer = require("multer");
+const operatorVerificationStatus = require("../middlewares/Operatorverification");
 const jwt = require("jsonwebtoken");
 const {
   authToken,
@@ -9,6 +10,7 @@ const {
 const {
   createoperator,
   operatorLogin,
+  createOperatorSelections,
   operatorCompleteRegistration,
 } = require("../controllers/operatorcontroller");
 
@@ -51,6 +53,22 @@ operators.post(
       res.status(201).json(result);
     } catch (error) {
       console.log("Error validating operator data:", error);
+      res.status(409).send({ error });
+    }
+  }
+);
+
+operators.post(
+  "/selectProductAndSeed",
+  operatorAuthToken,
+  operatorVerificationStatus,
+  async (req, res) => {
+    try {
+      let result = await createOperatorSelections(req);
+      // console.log(result);
+      res.status(201).json(result);
+    } catch (error) {
+      console.log("Error validating operator selection:", error);
       res.status(409).send({ error });
     }
   }

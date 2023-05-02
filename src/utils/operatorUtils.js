@@ -2,15 +2,39 @@ const pool = require("../db");
 const moment = require("moment");
 const jwt = require("jsonwebtoken");
 const { requiredKeysValidator } = require("./uservalidation");
+const validator = require("validator");
 
 const registion_id = (req) => {
   return new Promise((resolve, reject) => {
     try {
       const jwtToken = req.headers.authorization;
       const decodedToken = jwt.decode(jwtToken);
-      console.log(decodedToken);
+      // console.log(decodedToken);
       const reg_id = parseInt(decodedToken.reg_id);
+      // console.log(reg_id);
       resolve(reg_id);
+    } catch (error) {
+      reject(error);
+    }
+  });
+};
+
+const getOperator_id = (req) => {
+  return new Promise(async (resolve, reject) => {
+    try {
+      const reg_id = await registion_id(req);
+      // console.log(reg_id);
+      const conn = await pool.connect();
+      const sql = "SELECT * from operator_profile where reg_id =($1);";
+      const result = await conn.query(sql, [reg_id]);
+      const operator = result.rows[0];
+
+      // console.log(operator);
+      const operator_id = operator.operator_id;
+      // console.log(operator_id);
+
+      conn.release();
+      resolve(operator_id);
     } catch (error) {
       reject(error);
     }
@@ -56,7 +80,7 @@ const userState = (req) => {
         reject("Please enter a valid state");
       }
       const stateId = foundState.state_id;
-      console.log(stateId);
+      // console.log(stateId);
 
       resolve(stateId);
     } catch (error) {
@@ -72,7 +96,7 @@ const userLga = (req) => {
       const LGAname =
         lga.trim().charAt(0).toUpperCase() + lga.slice(1).toLowerCase();
       const stateID = await userState(req);
-      console.log(stateID);
+      // console.log(stateID);
       const stateId = stateID.toString();
       const conn = await pool.connect();
 
@@ -180,10 +204,87 @@ const operatorValidation = (req) => {
   });
 };
 
+const checkCorrectProductAndSeedTypeId = (req) => {
+  return new Promise(async (resolve, reject) => {
+    let conn; // declare conn here
+
+    try {
+      console.log(req.body);
+      const { product_id, seed_id } = req.body;
+      console.log(seed_id);
+      const operator_id = await getOperator_id(req);
+
+      conn = await pool.connect(); // initialize conn here
+
+      const allSeedTypeSql = "SELECT * from seeds where product_id=($1);";
+      const allSeedTypeResult = await conn.query(allSeedTypeSql, [product_id]);
+      const SeedTypes = allSeedTypeResult.rows;
+
+      if (!SeedTypes.length)
+        reject(
+          `Select a valid product_id from this list of products; ${product_id}`
+        );
+
+      const seedTypeSql =
+        "SELECT * from seeds where seed_id =($1) and product_id=($2);";
+      const seedTypeResult = await conn.query(seedTypeSql, [
+        seed_id,
+        product_id,
+      ]);
+      const seedType = seedTypeResult.rows[0];
+      if (!seedType)
+        reject(
+          `Invalid Seed Type_id for product_id provided. Valid Seed_id Include: ${SeedTypes.map(
+            (seed) => seed.seed_id
+          )}`
+        );
+
+      const sql =
+        "SELECT * from operator_selections where operator_id =($1) and seed_id =($2) and product_id=($3)";
+      const result = await conn.query(sql, [operator_id, seed_id, product_id]);
+      const operatorSelection = result.rows[0];
+      if (operatorSelection) reject("Operator already has this selection");
+
+      resolve(true);
+    } catch (error) {
+      reject(error);
+    } finally {
+      if (conn) conn.release(); // check if conn is defined before releasing it
+    }
+  });
+};
+
+const validateOperatorsSelection = (req) => {
+  return new Promise(async (resolve, reject) => {
+    try {
+      const { product_id, seed_id } = req.body;
+      const operator_id = await getOperator_id(req);
+
+      const requiredKeys = ["product_id", "seed_id"];
+      await requiredKeysValidator(req, requiredKeys);
+
+      if (!product_id || !seed_id) {
+        reject("Product_id and seed_id must be provided");
+      } else {
+        if (!validator.isInt(String(product_id)))
+          reject("Invalid Product id. Product_id must be a number");
+        if (!validator.isInt(String(seed_id)))
+          reject("Invalid Seed type id. seed_id must be a number");
+        await checkCorrectProductAndSeedTypeId(req); // pass req object
+      }
+      resolve(true);
+    } catch (error) {
+      reject(error);
+    }
+  });
+};
+
 module.exports = {
   userNationality,
   userState,
   userLga,
   operatorValidation,
   registion_id,
+  validateOperatorsSelection,
+  getOperator_id,
 };
