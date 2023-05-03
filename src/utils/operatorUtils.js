@@ -65,8 +65,7 @@ const userState = (req) => {
   return new Promise(async (resolve, reject) => {
     try {
       let { state } = req.body;
-      state =
-        state.trim().charAt(0).toUpperCase() + state.slice(1).toLowerCase();
+      state = state.toLowerCase();
       const conn = await pool.connect();
 
       const stateQuery = 'SELECT * FROM "states" WHERE state = $1';
@@ -93,8 +92,7 @@ const userLga = (req) => {
   return new Promise(async (resolve, reject) => {
     try {
       let { lga } = req.body;
-      const LGAname =
-        lga.trim().charAt(0).toUpperCase() + lga.slice(1).toLowerCase();
+      const LGAname = lga.toLowerCase();
       const stateID = await userState(req);
       // console.log(stateID);
       const stateId = stateID.toString();
@@ -107,15 +105,13 @@ const userLga = (req) => {
       conn.release();
 
       if (foundlGA.length === 0) {
-        reject(new Error("Please enter a valid Local Government"));
+        reject("Please enter a valid Local Government");
       }
 
       const lgaStateID = foundlGA[0].state_id.toString();
 
       if (!(stateId === lgaStateID)) {
-        reject(
-          new Error("Local Government selected doesn't exist in your state")
-        );
+        reject("Local Government selected doesn't exist in your state");
       }
 
       resolve(true);

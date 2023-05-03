@@ -14,7 +14,7 @@ users.post("/", async (req, res) => {
     let result = await createUser(req);
     res.status(201).json(result);
   } catch (error) {
-    console.log("Error validating user data:", error);
+    // console.log("Error validating user data:", error);
     res.status(409).send({ error });
   }
 });
@@ -28,7 +28,7 @@ users.post("/login", async (req, res) => {
     });
     res.status(201).send({ result, token });
   } catch (error) {
-    console.log("Error at login:", error);
+    // console.log("Error at login:", error);
     res.status(409).send({ error });
   }
 });

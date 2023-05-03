@@ -10,9 +10,9 @@ const getUserId = (req) => {
     try {
       const jwtToken = req.headers.authorization;
       const decodedToken = jwt.decode(jwtToken);
-      console.log("Decoded token: ", decodedToken);
+      // console.log("Decoded token: ", decodedToken);
       const user_id = parseInt(decodedToken.user_id);
-      console.log(user_id);
+      // console.log(user_id);
       resolve(user_id);
     } catch (error) {
       reject(error);
@@ -75,7 +75,7 @@ const requiredKeysValidator = (req, requiredKeysArray) => {
   return new Promise((resolve, reject) => {
     const keys = Object.keys(req.body);
     const missingKeys = requiredKeysArray.filter((key) => !keys.includes(key));
-    console.log(missingKeys);
+    // console.log(missingKeys);
 
     if (missingKeys.length > 0) {
       reject(`Missing required keys: ${missingKeys.join(", ")}`);
